@@ -42,15 +42,17 @@ int main() {
     Pointer[0].scrollUp = False;
     Pointer[0].scrollDown = False;
 
+    char keysArray[32];
+
     int timeDelay = 50000; // in microseconds (10^-6 seconds)
     int counter = 1;
     while (true) {
         // XQueryPointer will intialize all the parameters it takes except display and rootWindow
         // winX and winY will be same as rootX and rootY because the root window is passed to XQueryPointer()
-        int random = mask & Button1Mask;
         XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
-        std::cout << "Pointer is at: (" << rootX << ", " << rootY << ")    " << random << std::endl;
-        
+        XQueryKeymap(display, keysArray);
+
+        std::cout << "Pointer is at: (" << rootX << ", " << rootY << ")"<<std::endl;
         if(mask & Button1Mask){
             Pointer[counter].LMB = True;
         }
