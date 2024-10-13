@@ -29,5 +29,5 @@ sudo pacman -S base-devel libx11
 
 ```
 cd path/to/main.cpp
-g++ main.cpp -o main -lx11 && ./main
+g++ main.cpp -o main -lX11 && ./main
 ```
