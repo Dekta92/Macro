@@ -3,15 +3,15 @@
 #include <unistd.h>
 #include <ctime>
 
-int main() {
+int Recorder(){
     Display* display;
     Window rootWindow;
     int rootX, rootY;
     int oldrootX, oldrootY;
-    int winX, winY; 
+    int winX, winY;
     XEvent event;
     unsigned int mask;
-    Window returnedRoot, returnedChild; 
+    Window returnedRoot, returnedChild;
     // returnedRoot will always give the root window
     // returnedChild will give the ID of the window under the pointer
 
@@ -20,7 +20,7 @@ int main() {
         std::cout << "Cannot open display\n";
         return 1;
     }
-    rootWindow = DefaultRootWindow(display); // Initializes the window variable with the root window.      
+    rootWindow = DefaultRootWindow(display); // Initializes the window variable with the root window.
 
     // Intialize Pointer Array for storing data
     struct PointerData{
@@ -28,8 +28,8 @@ int main() {
         short int Ycoord;
         Bool LMB;
         Bool MMB;
-        Bool RMB;       
-        Bool scrollUp; 
+        Bool RMB;
+        Bool scrollUp;
         Bool scrollDown;
     };
     PointerData Pointer[50];
@@ -47,7 +47,7 @@ int main() {
     int timeDelay = 50000; // in microseconds (10^-6 seconds)
     int counter = 1;
     while (true) {
-        // XQueryPointer will intialize all the parameters it takes except display and rootWindow
+        // XQueryPointer will initialize all the parameters it takes except display and rootWindow
         // winX and winY will be same as rootX and rootY because the root window is passed to XQueryPointer()
         XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
         XQueryKeymap(display, keysArray);
@@ -73,4 +73,29 @@ int main() {
         counter += 1;
     }
     XCloseDisplay(display);
+}
+
+
+int main() {
+    std::cout << "########################### Macro by Dekta92 on Github ###########################\n";
+    std::cout << "(Works only on X11!)\n\n";
+        
+    bool programContinue = True;
+    int choice = 0;
+    while(programContinue){
+        std::cout << "Please select your choice (Press 1/2)\n";
+        std::cout << "1. Record\n";
+        std::cout << "2. Exit\n";
+        std::cin >> choice;
+        switch (choice)
+        {
+        case 1:
+            Recorder();
+            break;
+        
+        case 2:
+            programContinue = False;
+        }
+
+    }
 }
