@@ -1,6 +1,6 @@
 # Macro
 
-(Currently in Development)
+(In development currently)
 This is a simple C++ terminal-only macro recorder and player.
 This is my first ever programming project on Github so please be kind. Although I would request you to provide suggestions on how to improve it anyway.
 This project utilizes the X11 library.
