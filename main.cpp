@@ -57,14 +57,14 @@ int Recorder(std::string filename){
 
         // Write pointer data to array
         std::cout << "Pointer is at: (" << rootX << ", " << rootY << ")"<<std::endl;
-        Pointer[counter].Xcoord = rootX; 
+        Pointer[counter].Xcoord = rootX;
         Pointer[counter].Ycoord = rootY;
         Pointer[counter].LMB = (mask & Button1Mask) != 0;
         Pointer[counter].MMB = (mask & Button2Mask) != 0;
         Pointer[counter].RMB = (mask & Button3Mask) != 0;
         Pointer[counter].scrollUp = (mask & Button4Mask) != 0;
         Pointer[counter].scrollDown = (mask & Button5Mask) != 0;
-        
+
         // Write keyboard data to array
         std::strncpy(keyboardData.keysArray[keyboardData.counter % 50], tempKeysArray, 32);
         keyboardData.keysArray[keyboardData.counter % 50][31] = '\0';
@@ -76,16 +76,16 @@ int Recorder(std::string filename){
                 break;
             }
             for (int i = 0; i < 50; ++i) {
-                outFile << Pointer[i].Xcoord << ", " 
-                        << Pointer[i].Ycoord << ", " 
-                        << Pointer[i].LMB << ", " 
-                        << Pointer[i].MMB << ", " 
-                        << Pointer[i].RMB << ", " 
-                        << Pointer[i].scrollUp << ", " 
+                outFile << Pointer[i].Xcoord << ", "
+                        << Pointer[i].Ycoord << ", "
+                        << Pointer[i].LMB << ", "
+                        << Pointer[i].MMB << ", "
+                        << Pointer[i].RMB << ", "
+                        << Pointer[i].scrollUp << ", "
                         << Pointer[i].scrollDown << "\n";
                 outFile << keyboardData.keysArray[i % 50] << "\n";
             }
-            
+
             outFile.close();
         }
 
@@ -93,7 +93,7 @@ int Recorder(std::string filename){
         usleep(timeDelay);
         counter += 1;
         counter = counter % 50;
-        
+
     }
     XCloseDisplay(display);
     return 0;
