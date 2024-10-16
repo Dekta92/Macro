@@ -1,13 +1,11 @@
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <iostream>
-#include <unistd.h>
 #include <cstring>
-#include <ctime>
 #include <fstream>
-#include <sstream>
-#include <string>
+#include <unistd.h>
 
-struct PointerData{
+struct PointerData {
     short int Xcoord;
     short int Ycoord;
     bool LMB;
@@ -17,46 +15,78 @@ struct PointerData{
     bool scrollDown;
 };
 
-struct KeyboardData{
+struct KeyboardData {
     short int counter;
-    char keysArray[50][32];
+    char keysArray[50][256];
 };
 
-int Recorder(std::string filename){
+void SavePressedKeys(Display* display, KeyboardData& keyboardData) {
+    char keys[32]; 
+    XQueryKeymap(display, keys);
+
+    int currentIndex = keyboardData.counter % 50;
+    int position = 0;
+
+    for (int i = 0; i < 256; ++i) {
+        int byteIndex = i / 8;
+        int bitIndex = i % 8;
+
+        if (keys[byteIndex] & (1 << bitIndex)) {  // If the key is pressed
+            KeyCode keycode = i;
+            KeySym keysym = XKeycodeToKeysym(display, keycode, 0);  // Get the KeySym for the keycode
+
+            if (keysym != NoSymbol) {
+                char* keyString = XKeysymToString(keysym);  // Convert KeySym to string for easier readability
+
+                // Copy the KeySym string to the array
+                if (keyString && position < 255) {
+                    std::strncpy(&keyboardData.keysArray[currentIndex][position], keyString, 255 - position);
+                    position += std::strlen(keyString);
+                    keyboardData.keysArray[currentIndex][position] = ' ';
+                    position++;
+                }
+            }
+        }
+    }
+    keyboardData.keysArray[currentIndex][position] = '\0';
+    keyboardData.counter++;
+}
+
+int Recorder(std::string filename) {
     Display* display;
     Window rootWindow;
     int rootX, rootY;
     int winX, winY;
-    XEvent event;
     unsigned int mask;
     Window returnedRoot, returnedChild;
     // returnedRoot will always give the root window
     // returnedChild will give the ID of the window under the pointer
 
-    display = XOpenDisplay(nullptr);  // Opens a connection to X server and returns a pointer to Display structure
-    if (display == nullptr) {
+    display = XOpenDisplay(nullptr);
+    if (!display) {
         std::cout << "Cannot open display\n";
         return 1;
     }
-    rootWindow = DefaultRootWindow(display); // Initializes the window variable with the root window.
+    rootWindow = DefaultRootWindow(display);
 
     // Initialize PointerData
     PointerData Pointer[50];
-    for (int i = 0; i < 50; ++i){Pointer[i] = {0, 0, false, false, false, false, false};}
+    for (int i = 0; i < 50; ++i) {
+        Pointer[i] = {0, 0, false, false, false, false, false};
+    }
 
     // Initialize KeyboardData
     KeyboardData keyboardData = {0};
-    char tempKeysArray[32] = {};
 
-    int timeDelay = 50000; // in microseconds (10^-6 seconds)
+    int timeDelay = 50000;  // in microseconds (10^-6 seconds)
     int counter = 0;
+
     while (true) {
         // Get pointer and keyboard data
         XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
-        XQueryKeymap(display, tempKeysArray);
 
         // Write pointer data to array
-        std::cout << "Pointer is at: (" << rootX << ", " << rootY << ")"<<std::endl;
+        std::cout << "Pointer is at: (" << rootX << ", " << rootY << ")\n";
         Pointer[counter].Xcoord = rootX;
         Pointer[counter].Ycoord = rootY;
         Pointer[counter].LMB = (mask & Button1Mask) != 0;
@@ -65,10 +95,10 @@ int Recorder(std::string filename){
         Pointer[counter].scrollUp = (mask & Button4Mask) != 0;
         Pointer[counter].scrollDown = (mask & Button5Mask) != 0;
 
-        // Write keyboard data to array
-        std::strncpy(keyboardData.keysArray[keyboardData.counter % 50], tempKeysArray, 32);
-        keyboardData.keysArray[keyboardData.counter % 50][31] = '\0';
+        // Save keyboard data (pressed keys) to array
+        SavePressedKeys(display, keyboardData);
 
+        // Log data to file every 50 iterations
         if ((counter + 1) % 50 == 0) {
             std::ofstream outFile(filename, std::ios::app);
             if (!outFile) {
@@ -83,22 +113,18 @@ int Recorder(std::string filename){
                         << Pointer[i].RMB << ", "
                         << Pointer[i].scrollUp << ", "
                         << Pointer[i].scrollDown << "\n";
-                outFile << keyboardData.keysArray[i % 50] << "\n";
+                outFile << keyboardData.keysArray[i] << "\n";
             }
-
             outFile.close();
         }
 
-
         usleep(timeDelay);
-        counter += 1;
+        counter++;
         counter = counter % 50;
-
     }
     XCloseDisplay(display);
     return 0;
 }
-
 
 int main() {
     std::cout << "########################### Macro by Dekta92 on Github ###########################\n\n";
