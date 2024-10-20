@@ -1,10 +1,13 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
+#include <X11/keysym.h>
 #include <iostream>
 #include <cstring>
 #include <fstream>
 #include <unistd.h>
+#include <unistd.h>
 
+struct PointerData {
 struct PointerData {
     short int Xcoord;
     short int Ycoord;
@@ -62,6 +65,7 @@ int Recorder(std::string filename) {
     int keyCounter = 0; 
 
     int timeDelay = 50000;  // in microseconds (10^-6 seconds)
+    int timeDelay = 50000;  // in microseconds (10^-6 seconds)
     int counter = 0;
 
     std::cout << "Recording...\n";
@@ -81,6 +85,7 @@ int Recorder(std::string filename) {
 
         SavePressedKeys(display, keysArray, keyCounter);
 
+        // Log data to file every 50 iterations
         if ((counter + 1) % 50 == 0) {
             std::ofstream outFile(filename, std::ios::app);
             if (!outFile) {
