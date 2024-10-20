@@ -1,13 +1,11 @@
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <iostream>
-#include <unistd.h>
 #include <cstring>
-#include <ctime>
 #include <fstream>
-#include <sstream>
-#include <string>
+#include <unistd.h>
 
-struct PointerData{
+struct PointerData {
     short int Xcoord;
     short int Ycoord;
     bool LMB;
@@ -17,46 +15,62 @@ struct PointerData{
     bool scrollDown;
 };
 
-struct KeyboardData{
-    short int counter;
-    char keysArray[50][32];
-};
+void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) {
+    char keys[32]; 
+    XQueryKeymap(display, keys);
 
-int Recorder(std::string filename){
-    Display* display;
-    Window rootWindow;
-    int rootX, rootY;
-    int winX, winY;
-    XEvent event;
-    unsigned int mask;
-    Window returnedRoot, returnedChild;
-    // returnedRoot will always give the root window
-    // returnedChild will give the ID of the window under the pointer
+    int currentIndex = counter % 50;
+    int keyIndex = 0;
+    
+    // Gets the KeySym and store it in the keysArray for all keys
+    for (int i = 0; i < 256; ++i) {
+        int byteIndex = i / 8;
+        int bitIndex = i % 8;
 
-    display = XOpenDisplay(nullptr);  // Opens a connection to X server and returns a pointer to Display structure
-    if (display == nullptr) {
+        if (keys[byteIndex] & (1 << bitIndex)) {
+            KeyCode keycode = i;
+            KeySym keysym = XKeycodeToKeysym(display, keycode, 0);
+
+            if (keysym != NoSymbol) {
+                if (keyIndex < 256) {
+                    keysArray[currentIndex][keyIndex] = keysym;
+                    keyIndex++;
+                }
+            }
+        }
+    }
+
+    while (keyIndex < 256) {
+        keysArray[currentIndex][keyIndex] = NoSymbol;
+        keyIndex++;
+    }
+
+    counter++;
+}
+
+int Recorder(std::string filename) {
+    Display* display = XOpenDisplay(nullptr);
+    if (!display) {
         std::cout << "Cannot open display\n";
         return 1;
     }
-    rootWindow = DefaultRootWindow(display); // Initializes the window variable with the root window.
 
-    // Initialize PointerData
-    PointerData Pointer[50];
-    for (int i = 0; i < 50; ++i){Pointer[i] = {0, 0, false, false, false, false, false};}
+    Window rootWindow = DefaultRootWindow(display);
+    
+    PointerData Pointer[50] = {};
+    KeySym keysArray[50][256] = {};
+    int keyCounter = 0; 
 
-    // Initialize KeyboardData
-    KeyboardData keyboardData = {0};
-    char tempKeysArray[32] = {};
-
-    int timeDelay = 50000; // in microseconds (10^-6 seconds)
+    int timeDelay = 50000;  // in microseconds (10^-6 seconds)
     int counter = 0;
-    while (true) {
-        // Get pointer and keyboard data
-        XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
-        XQueryKeymap(display, tempKeysArray);
 
-        // Write pointer data to array
-        std::cout << "Pointer is at: (" << rootX << ", " << rootY << ")"<<std::endl;
+    std::cout << "Recording...\n";
+    while (true) {
+        unsigned int mask;
+        Window returnedRoot, returnedChild;
+        int rootX, rootY, winX, winY;
+        
+        XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
         Pointer[counter].Xcoord = rootX;
         Pointer[counter].Ycoord = rootY;
         Pointer[counter].LMB = (mask & Button1Mask) != 0;
@@ -65,9 +79,7 @@ int Recorder(std::string filename){
         Pointer[counter].scrollUp = (mask & Button4Mask) != 0;
         Pointer[counter].scrollDown = (mask & Button5Mask) != 0;
 
-        // Write keyboard data to array
-        std::strncpy(keyboardData.keysArray[keyboardData.counter % 50], tempKeysArray, 32);
-        keyboardData.keysArray[keyboardData.counter % 50][31] = '\0';
+        SavePressedKeys(display, keysArray, keyCounter);
 
         if ((counter + 1) % 50 == 0) {
             std::ofstream outFile(filename, std::ios::app);
@@ -75,6 +87,8 @@ int Recorder(std::string filename){
                 std::cerr << "Error opening file!\n";
                 break;
             }
+
+            // Write pointer data
             for (int i = 0; i < 50; ++i) {
                 outFile << Pointer[i].Xcoord << ", "
                         << Pointer[i].Ycoord << ", "
@@ -83,22 +97,22 @@ int Recorder(std::string filename){
                         << Pointer[i].RMB << ", "
                         << Pointer[i].scrollUp << ", "
                         << Pointer[i].scrollDown << "\n";
-                outFile << keyboardData.keysArray[i % 50] << "\n";
-            }
 
+                for (int j = 0; j < 256 && keysArray[i][j] != NoSymbol; ++j) {
+                    outFile << keysArray[i][j] << " ";  // Save as hex
+                }
+                outFile << "\n";
+            }
             outFile.close();
         }
 
-
-        usleep(timeDelay);
-        counter += 1;
-        counter = counter % 50;
-
+        counter++;
+        counter %= 50; // This keeps it within 0-49
     }
+
     XCloseDisplay(display);
     return 0;
 }
-
 
 int main() {
     std::cout << "########################### Macro by Dekta92 on Github ###########################\n\n";
