@@ -15,8 +15,9 @@ struct PointerData {
     bool scrollDown;
 };
 
+// Gets the KeySym for all keys and stores it in the keysArray
 void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) {
-    char keys[32]; 
+    char keys[32];
     XQueryKeymap(display, keys);
 
     int currentIndex = counter % 50;
@@ -28,10 +29,8 @@ void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) 
 
         if (keys[byteIndex] & (1 << bitIndex)) {
             KeyCode keycode = i;
-            KeySym keysym = XKeycodeToKeysym(display, keycode, 0);  // Get the KeySym for the keycode
-
+            KeySym keysym = XKeycodeToKeysym(display, keycode, 0);
             if (keysym != NoSymbol) {
-                // Directly store the KeySym in the array
                 if (keyIndex < 256) {
                     keysArray[currentIndex][keyIndex] = keysym;
                     keyIndex++;
@@ -40,7 +39,6 @@ void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) 
         }
     }
 
-    // Fill the remaining spots in the array with NoSymbol to avoid garbage data
     while (keyIndex < 256) {
         keysArray[currentIndex][keyIndex] = NoSymbol;
         keyIndex++;
@@ -57,10 +55,10 @@ int Recorder(std::string filename) {
     }
 
     Window rootWindow = DefaultRootWindow(display);
-    
+
     PointerData Pointer[50] = {};
-    KeySym keysArray[50][256] = {};  // Initialize KeySym array for 50 sets of key presses
-    int keyCounter = 0;  // Keeps track of the key array index
+    KeySym keysArray[50][256] = {};
+    int keyCounter = 0;
 
     int timeDelay = 50000;  // in microseconds (10^-6 seconds)
     int counter = 0;
@@ -69,11 +67,9 @@ int Recorder(std::string filename) {
         unsigned int mask;
         Window returnedRoot, returnedChild;
         int rootX, rootY, winX, winY;
-        
-        // Query pointer data
-        XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
 
-        // Update pointer data
+        // Gets Pointer data
+        XQueryPointer(display, rootWindow, &returnedRoot, &returnedChild, &rootX, &rootY, &winX, &winY, &mask);
         Pointer[counter].Xcoord = rootX;
         Pointer[counter].Ycoord = rootY;
         Pointer[counter].LMB = (mask & Button1Mask) != 0;
@@ -93,7 +89,6 @@ int Recorder(std::string filename) {
                 break;
             }
 
-            // Write pointer data
             for (int i = 0; i < 50; ++i) {
                 outFile << Pointer[i].Xcoord << ", "
                         << Pointer[i].Ycoord << ", "
@@ -102,22 +97,17 @@ int Recorder(std::string filename) {
                         << Pointer[i].RMB << ", "
                         << Pointer[i].scrollUp << ", "
                         << Pointer[i].scrollDown << "\n";
-            }
-
-            // Write corresponding KeySyms (as hexadecimal or integers)
-            for (int i = 0; i < 50; ++i) {
                 for (int j = 0; j < 256 && keysArray[i][j] != NoSymbol; ++j) {
-                    outFile << keysArray[i][j] << " ";  // Save as hex
+                    outFile << keysArray[i][j] << " ";
                 }
                 outFile << "\n";
             }
-
             outFile.close();
         }
 
         usleep(timeDelay);
         counter++;
-        counter %= 50; // This keeps it within 0-49
+        counter %= 50;
     }
 
     XCloseDisplay(display);
