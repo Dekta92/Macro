@@ -1,4 +1,5 @@
 #include <X11/Xlib.h>
+#include <X11/XKBlib.h>
 #include <X11/keysym.h>
 #include <iostream>
 #include <cstring>
@@ -29,7 +30,7 @@ void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) 
 
         if (keys[byteIndex] & (1 << bitIndex)) {
             KeyCode keycode = i;
-            KeySym keysym = XKeycodeToKeysym(display, keycode, 0);
+            KeySym keysym = XkbKeycodeToKeysym(display, keycode, 0, 0);
             if (keysym != NoSymbol) {
                 if (keyIndex < 256) {
                     keysArray[currentIndex][keyIndex] = keysym;
@@ -120,10 +121,13 @@ int main() {
     std::string filename = "";
     bool programContinue = true;
     int choice = 0;
+    std::ifstream file;
+
     while(programContinue) {
-        std::cout << "Please select your choice (Press 1/2)\n"
+        std::cout << "Please select your choice (Press 1/2/3)\n"
                   << "1. Record\n"
-                  << "2. Exit\n";
+                  << "2. Play\n"
+                  << "3. Exit\n";
         std::cin >> choice;
         switch (choice) {
             case 1:
@@ -132,9 +136,24 @@ int main() {
                 filename += ".txt";
                 Recorder(filename);
                 break;
-
+            
             case 2:
+                std::cout << "Please input the exact directory and name for your recording file\n";
+                std::cin >> filename;
+                file.open(filename);
+                
+                // Have to make a function to read file data now
+                if (file){std::cout << "File Found!\n";}
+
+                else{std::cout << "File does not exist :(\n";}
+                break;
+                
+            case 3:
                 programContinue = false;
+                break;
+
+            default:
+                std::cout << "Invalid option. Please try again.\n";
                 break;
         }
     }
