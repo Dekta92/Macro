@@ -13,21 +13,22 @@ This project utilizes the X11 library.
 For Ubuntu/Debian
 ```
 sudo apt update
-sudo apt install build-essential libx11-dev
-```
+sudo apt install build-essential libx11-dev libxtst-dev
+
 For Fedora
 ```
+sudo dnf check-update
 sudo dnf groupinstall "Development Tools"
-sudo dnf install libX11-devel
+sudo dnf install libX11-devel libXtst-devel
 ```
 For Arch
 ```
-sudo pacman -S base-devel libx11
+sudo pacman -Sy base-devel libx11 libxtst
 ```
 
 ### Compilation command
 
 ```
 cd path/to/main.cpp
-g++ main.cpp -o main -lX11 && ./main
+g++ main.cpp -o main -lX11 -lXtst && ./main
 ```
