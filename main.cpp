@@ -1,9 +1,11 @@
 #include <X11/Xlib.h>
-#include <X11/XKBlib.h>
-#include <X11/keysym.h>
+#include <X11/XKBlib.h> 
+#include <X11/extensions/XTest.h>
+// #include <X11/keysym.h>
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <unistd.h>
 
 struct PointerData {
@@ -16,13 +18,15 @@ struct PointerData {
     bool scrollDown;
 };
 
+// Recording Functions
+
 // Gets the KeySym for all keys and stores it in the keysArray
 void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) {
     char keys[32];
     XQueryKeymap(display, keys);
 
     int currentIndex = counter % 50;
-    int keyIndex = 0;
+        int keyIndex = 0;
 
     for (int i = 0; i < 256; ++i) {
         int byteIndex = i / 8;
@@ -115,18 +119,72 @@ int Recorder(std::string filename) {
     return 0;
 }
 
+
+// Playback Function
+
+int Playback(std::string filename){
+    Display* display = XOpenDisplay(nullptr);
+    Window rootWindow = DefaultRootWindow(display);
+
+    
+    std::ifstream recordingFile(filename);
+    
+    if (!recordingFile) {
+        std::cout << "Error: Unable to open the file " << filename
+                  << "\nCheck if file is in a different directory or with a different name\n";
+        return 1;
+    }
+
+    std::string mouseLine;
+    std::string keyboardLine;
+
+    while (std::getline(recordingFile, mouseLine)) {
+        std::stringstream ss(mouseLine);
+        std::getline(recordingFile, keyboardLine);
+
+        int Xcord, Ycord;
+        bool LMB, MMB, RMB, scrollUp, scrollDown;
+        char comma;
+
+        ss >> Xcord >> comma
+           >> Ycord >> comma
+           >> LMB >> comma
+           >> MMB >> comma
+           >> RMB >> comma
+           >> scrollUp >> comma
+           >> scrollDown;
+
+        // Simulate mouse movements, presses and scrolls respectively
+        XTestFakeMotionEvent(display, -1, Xcord, Ycord, CurrentTime);
+        
+        if(LMB){XTestFakeButtonEvent(display, 1, True, CurrentTime);}else{XTestFakeButtonEvent(display, 1, True, CurrentTime);}
+        if(MMB){XTestFakeButtonEvent(display, 2, True, CurrentTime);}else{XTestFakeButtonEvent(display, 2, True, CurrentTime);}
+        if(RMB){XTestFakeButtonEvent(display, 3, True, CurrentTime);}else{XTestFakeButtonEvent(display, 3, True, CurrentTime);}
+
+        if(scrollUp){XTestFakeButtonEvent(display, 4, True, CurrentTime);XTestFakeButtonEvent(display, 4, False, CurrentTime);}
+        if(scrollUp){XTestFakeButtonEvent(display, 5, True, CurrentTime);XTestFakeButtonEvent(display, 5, False, CurrentTime);}
+
+        XFlush(display);
+        usleep(50000);
+    }
+
+
+
+
+    recordingFile.close();
+    return 0;
+}
+
 int main() {
     std::cout << "########################### Macro by Dekta92 on Github ###########################\n\n";
 
     std::string filename = "";
     bool programContinue = true;
     int choice = 0;
-    std::ifstream file;
-
     while(programContinue) {
-        std::cout << "Please select your choice (Press 1/2/3)\n"
-                  << "1. Record\n"
-                  << "2. Play\n"
+        std::cout << "Please select your choice (Press 1/2)\n"
+                  << "1. Record Macro\n"
+                  << "2. Play Macro\n"
                   << "3. Exit\n";
         std::cin >> choice;
         switch (choice) {
@@ -136,24 +194,14 @@ int main() {
                 filename += ".txt";
                 Recorder(filename);
                 break;
-            
             case 2:
-                std::cout << "Please input the exact directory and name for your recording file\n";
+                std::cout << "Please input recording's name with extension name (make sure the file is in the same directory as this file)\n";
                 std::cin >> filename;
-                file.open(filename);
-                
-                // Have to make a function to read file data now
-                if (file){std::cout << "File Found!\n";}
-
-                else{std::cout << "File does not exist :(\n";}
+                Playback(filename);
+                std::cout << "Playback Finished!";
                 break;
-                
             case 3:
                 programContinue = false;
-                break;
-
-            default:
-                std::cout << "Invalid option. Please try again.\n";
                 break;
         }
     }
