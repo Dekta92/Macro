@@ -1,7 +1,6 @@
 #include <X11/Xlib.h>
 #include <X11/XKBlib.h> 
 #include <X11/extensions/XTest.h>
-// #include <X11/keysym.h>
 #include <iostream>
 #include <cstring>
 #include <fstream>
@@ -157,9 +156,9 @@ int Playback(std::string filename){
         // Simulate mouse movements, presses and scrolls respectively
         XTestFakeMotionEvent(display, -1, Xcord, Ycord, CurrentTime);
         
-        if(LMB){XTestFakeButtonEvent(display, 1, True, CurrentTime);}else{XTestFakeButtonEvent(display, 1, True, CurrentTime);}
-        if(MMB){XTestFakeButtonEvent(display, 2, True, CurrentTime);}else{XTestFakeButtonEvent(display, 2, True, CurrentTime);}
-        if(RMB){XTestFakeButtonEvent(display, 3, True, CurrentTime);}else{XTestFakeButtonEvent(display, 3, True, CurrentTime);}
+        if(LMB){XTestFakeButtonEvent(display, 1, True, CurrentTime);}else{XTestFakeButtonEvent(display, 1, False, CurrentTime);}
+        if(MMB){XTestFakeButtonEvent(display, 2, True, CurrentTime);}else{XTestFakeButtonEvent(display, 2, False, CurrentTime);}
+        if(RMB){XTestFakeButtonEvent(display, 3, True, CurrentTime);}else{XTestFakeButtonEvent(display, 3, False, CurrentTime);}
 
         if(scrollUp){XTestFakeButtonEvent(display, 4, True, CurrentTime);XTestFakeButtonEvent(display, 4, False, CurrentTime);}
         if(scrollUp){XTestFakeButtonEvent(display, 5, True, CurrentTime);XTestFakeButtonEvent(display, 5, False, CurrentTime);}
@@ -168,9 +167,9 @@ int Playback(std::string filename){
         usleep(50000);
     }
 
-
-
-
+    for(int i = 1; i <= 5; i++){
+        XTestFakeButtonEvent(display, i, False, CurrentTime);
+    }
     recordingFile.close();
     return 0;
 }
@@ -182,7 +181,7 @@ int main() {
     bool programContinue = true;
     int choice = 0;
     while(programContinue) {
-        std::cout << "Please select your choice (Press 1/2)\n"
+        std::cout << "Please select your choice (Press 1/2/3)\n"
                   << "1. Record Macro\n"
                   << "2. Play Macro\n"
                   << "3. Exit\n";
