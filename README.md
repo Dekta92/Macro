@@ -14,7 +14,7 @@ For Ubuntu/Debian
 ```
 sudo apt update
 sudo apt install build-essential libx11-dev libxtst-dev
-
+```
 For Fedora
 ```
 sudo dnf check-update
