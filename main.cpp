@@ -1,10 +1,11 @@
 #include <X11/Xlib.h>
-#include <X11/XKBlib.h> 
+#include <X11/XKBlib.h>
 #include <X11/extensions/XTest.h>
 #include <iostream>
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <unistd.h>
 
 struct PointerData {
@@ -20,7 +21,7 @@ struct PointerData {
 // Recording Functions
 
 // Gets the KeySym for all keys and stores it in the keysArray
-void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) {
+void SavePressedKeys(Display* display, KeyCode keysArray[50][256], int& counter) {
     char keys[32];
     XQueryKeymap(display, keys);
 
@@ -33,40 +34,35 @@ void SavePressedKeys(Display* display, KeySym keysArray[50][256], int& counter) 
 
         if (keys[byteIndex] & (1 << bitIndex)) {
             KeyCode keycode = i;
-            KeySym keysym = XkbKeycodeToKeysym(display, keycode, 0, 0);
-            if (keysym != NoSymbol) {
-                if (keyIndex < 256) {
-                    keysArray[currentIndex][keyIndex] = keysym;
-                    keyIndex++;
-                }
+            if (keyIndex < 256) {
+                keysArray[currentIndex][keyIndex] = keycode;
+                keyIndex++;
             }
         }
     }
 
     while (keyIndex < 256) {
-        keysArray[currentIndex][keyIndex] = NoSymbol;
+        keysArray[currentIndex][keyIndex] = 0;
         keyIndex++;
     }
 
     counter++;
 }
 
-int Recorder(std::string filename) {
+int Recorder(std::string filename, int timeDelay) {
+
     Display* display = XOpenDisplay(nullptr);
     if (!display) {
         std::cout << "Cannot open display\n";
         return 1;
     }
-
     Window rootWindow = DefaultRootWindow(display);
 
     PointerData Pointer[50] = {};
-    KeySym keysArray[50][256] = {};
+    KeyCode keysArray[50][256] = {};
     int keyCounter = 0;
 
-    int timeDelay = 50000;  // in microseconds (10^-6 seconds)
     int counter = 0;
-
     while (true) {
         unsigned int mask;
         Window returnedRoot, returnedChild;
@@ -102,7 +98,7 @@ int Recorder(std::string filename) {
                         << Pointer[i].scrollUp << ", "
                         << Pointer[i].scrollDown << "\n";
                 for (int j = 0; j < 256 && keysArray[i][j] != NoSymbol; ++j) {
-                    outFile << keysArray[i][j] << " ";
+                    outFile << keysArray[i][j];
                 }
                 outFile << "\n";
             }
@@ -118,16 +114,19 @@ int Recorder(std::string filename) {
     return 0;
 }
 
-
 // Playback Function
 
-int Playback(std::string filename){
+int Playback(std::string filename, int timeDelay){
+    // Opens display and sets window to root window
     Display* display = XOpenDisplay(nullptr);
+    if (!display) {
+        std::cout << "Cannot open display\n";
+        return 1;
+    }
     Window rootWindow = DefaultRootWindow(display);
 
-    
+    // Opens file
     std::ifstream recordingFile(filename);
-    
     if (!recordingFile) {
         std::cout << "Error: Unable to open the file " << filename
                   << "\nCheck if file is in a different directory or with a different name\n";
@@ -136,16 +135,17 @@ int Playback(std::string filename){
 
     std::string mouseLine;
     std::string keyboardLine;
+    int numberOfKeycodes;
 
     while (std::getline(recordingFile, mouseLine)) {
-        std::stringstream ss(mouseLine);
-        std::getline(recordingFile, keyboardLine);
+        std::stringstream sm(mouseLine);
 
+	    // Grab Mouse data
         int Xcord, Ycord;
         bool LMB, MMB, RMB, scrollUp, scrollDown;
         char comma;
 
-        ss >> Xcord >> comma
+        sm >> Xcord >> comma
            >> Ycord >> comma
            >> LMB >> comma
            >> MMB >> comma
@@ -155,29 +155,59 @@ int Playback(std::string filename){
 
         // Simulate mouse movements, presses and scrolls respectively
         XTestFakeMotionEvent(display, -1, Xcord, Ycord, CurrentTime);
-        
+
         if(LMB){XTestFakeButtonEvent(display, 1, True, CurrentTime);}else{XTestFakeButtonEvent(display, 1, False, CurrentTime);}
         if(MMB){XTestFakeButtonEvent(display, 2, True, CurrentTime);}else{XTestFakeButtonEvent(display, 2, False, CurrentTime);}
         if(RMB){XTestFakeButtonEvent(display, 3, True, CurrentTime);}else{XTestFakeButtonEvent(display, 3, False, CurrentTime);}
 
         if(scrollUp){XTestFakeButtonEvent(display, 4, True, CurrentTime);XTestFakeButtonEvent(display, 4, False, CurrentTime);}
-        if(scrollUp){XTestFakeButtonEvent(display, 5, True, CurrentTime);XTestFakeButtonEvent(display, 5, False, CurrentTime);}
+        if(scrollDown){XTestFakeButtonEvent(display, 5, True, CurrentTime);XTestFakeButtonEvent(display, 5, False, CurrentTime);}
 
+
+
+	    // Get keyboard data
+        std::getline(recordingFile, keyboardLine);
+        numberOfKeycodes = keyboardLine.size();
+        std::stringstream sk(keyboardLine);
+
+        // Presses keys to be pressed
+        for(int i = 0 ; i < numberOfKeycodes; i++){
+            XTestFakeKeyEvent(display, keyboardLine[i], True, CurrentTime);
+        }
+
+        // Applies all keyboard and mouse events
         XFlush(display);
-        usleep(50000);
+
+        // Releases all keys that were pressed
+        for(int i = 0 ; i < numberOfKeycodes; i++){
+            XTestFakeKeyEvent(display, keyboardLine[i], False, CurrentTime);
+        }
+
+
+        usleep(timeDelay);
     }
 
+
+    // Cleanup (Releases all mouse and keyboard keys, closes file and closes connection to display)
     for(int i = 1; i <= 5; i++){
         XTestFakeButtonEvent(display, i, False, CurrentTime);
     }
+    for(int i = 0 ; i < numberOfKeycodes; i++){
+        XTestFakeKeyEvent(display, keyboardLine[i], False, CurrentTime);
+    }
     recordingFile.close();
+    XCloseDisplay(display);
+
     return 0;
 }
 
 int main() {
     std::cout << "########################### Macro by Dekta92 on Github ###########################\n\n";
 
-    std::string filename = "";
+    int timeDelay = 80000;  // in microseconds (10^-6 seconds)
+
+    // Main menu
+    std::string filename;
     bool programContinue = true;
     int choice = 0;
     while(programContinue) {
@@ -190,13 +220,12 @@ int main() {
             case 1:
                 std::cout << "Please input a name for your recording file\n";
                 std::cin >> filename;
-                filename += ".txt";
-                Recorder(filename);
+                Recorder(filename, timeDelay);
                 break;
             case 2:
                 std::cout << "Please input recording's name with extension name (make sure the file is in the same directory as this file)\n";
                 std::cin >> filename;
-                Playback(filename);
+                Playback(filename, timeDelay);
                 std::cout << "Playback Finished!";
                 break;
             case 3:
