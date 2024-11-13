@@ -8,6 +8,9 @@
 #include <string>
 #include <unistd.h>
 
+// Recording Functions
+
+bool StopRecording;
 struct PointerData {
     short int Xcoord;
     short int Ycoord;
@@ -18,9 +21,7 @@ struct PointerData {
     bool scrollDown;
 };
 
-// Recording Functions
-
-// Gets the KeySym for all keys and stores it in the keysArray
+// Gets the Keycode for all keys and stores it in the keysArray
 void SavePressedKeys(Display* display, KeyCode keysArray[50][256], int& counter) {
     char keys[32];
     XQueryKeymap(display, keys);
@@ -28,12 +29,15 @@ void SavePressedKeys(Display* display, KeyCode keysArray[50][256], int& counter)
     int currentIndex = counter % 50;
         int keyIndex = 0;
 
-    for (int i = 0; i < 256; ++i) {
+    for (int i = 0; i < 256; i++) {
         int byteIndex = i / 8;
         int bitIndex = i % 8;
 
         if (keys[byteIndex] & (1 << bitIndex)) {
             KeyCode keycode = i;
+            if (keycode == 'H'){
+                StopRecording = true;
+            }
             if (keyIndex < 256) {
                 keysArray[currentIndex][keyIndex] = keycode;
                 keyIndex++;
@@ -49,6 +53,8 @@ void SavePressedKeys(Display* display, KeyCode keysArray[50][256], int& counter)
     counter++;
 }
 
+// Keyboard and Mouse recording function
+
 int Recorder(std::string filename, int timeDelay) {
 
     Display* display = XOpenDisplay(nullptr);
@@ -63,6 +69,9 @@ int Recorder(std::string filename, int timeDelay) {
     int keyCounter = 0;
 
     int counter = 0;
+
+    std::cout<< "\nRecording Started! Press F6 to stop\n";
+    StopRecording = false;
     while (true) {
         unsigned int mask;
         Window returnedRoot, returnedChild;
@@ -97,6 +106,7 @@ int Recorder(std::string filename, int timeDelay) {
                         << Pointer[i].RMB << ", "
                         << Pointer[i].scrollUp << ", "
                         << Pointer[i].scrollDown << "\n";
+
                 for (int j = 0; j < 256 && keysArray[i][j] != NoSymbol; ++j) {
                     outFile << keysArray[i][j];
                 }
@@ -108,6 +118,10 @@ int Recorder(std::string filename, int timeDelay) {
         usleep(timeDelay);
         counter++;
         counter %= 50;
+
+        if(StopRecording){
+            return 0;
+        }
     }
 
     XCloseDisplay(display);
@@ -202,16 +216,14 @@ int Playback(std::string filename, int timeDelay){
 }
 
 int main() {
-    std::cout << "########################### Macro by Dekta92 on Github ###########################\n\n";
-
-    int timeDelay = 80000;  // in microseconds (10^-6 seconds)
+    int timeDelay = 20000;  // in microseconds (10^-6 seconds)
 
     // Main menu
     std::string filename;
     bool programContinue = true;
     int choice = 0;
     while(programContinue) {
-        std::cout << "Please select your choice (Press 1/2/3)\n"
+        std::cout << "\nPlease select your choice (Press 1/2/3)\n"
                   << "1. Record Macro\n"
                   << "2. Play Macro\n"
                   << "3. Exit\n";
@@ -221,6 +233,7 @@ int main() {
                 std::cout << "Please input a name for your recording file\n";
                 std::cin >> filename;
                 Recorder(filename, timeDelay);
+                std::cout << "Recording finished!\n";
                 break;
             case 2:
                 std::cout << "Please input recording's name with extension name (make sure the file is in the same directory as this file)\n";
